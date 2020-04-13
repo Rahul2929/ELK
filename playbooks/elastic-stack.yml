@@ -1,6 +1,6 @@
 - hosts: localhost
   vars_files:
-    - "../vars/3rdparty/sample.yml"
+    - "../vars/default.yml"
   
   roles:
      - { role: ec2-creation }
@@ -9,7 +9,7 @@
 - hosts: all
   become: true
   vars_files:
-    - ../vars/3rdparty/sample.yml
+    - ../vars/default.yml
 
   roles:
      - { role: elastic-stack }

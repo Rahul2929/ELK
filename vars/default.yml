@@ -1,0 +1,8 @@
+aws_region: us-east-1
+aws_output: json
+aws_access_key:
+aws_secret_key:
+ssh_key_name: ansible-key
+key_location: "/Users/rahul/Downloads/pem"
+subnet_id: subnet-0ed85498d1fef5d8b
+ami_id: ami-0f5f632e7bc487980
