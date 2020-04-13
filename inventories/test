@@ -1,0 +1,7 @@
+[dummy]
+18.140.130.241
+
+[dummy:vars]
+ansible_user=ec2-user 
+ansible_ssh_private_key_file=/Users/rahul/mpl/infra-code/india-test-state-ssh-key.pem
+region=ap-southeast-1

@@ -1,0 +1,19 @@
+- set_fact:
+     outer_item: "{{ item }}"
+
+- ec2_instance_facts:
+    filters:
+      instance-state-name: [ "running" ,"pending"]
+      "tag:Name": "{{ item }}"
+  register: instances
+
+- set_fact:
+    instance_ips: "{{ instances | json_query('instances[*].public_ip_address') }}"
+
+- name: Add host to service name group
+  add_host:
+    name: "{{ item }}"
+    groups: "{{ outer_item }}"
+    ansible_user: ec2-user
+    ansible_ssh_private_key_file: "{{ key_location }}/{{ ssh_key_name }}.pem"
+  with_items: "{{ instance_ips }}"

@@ -1,0 +1,9 @@
+instances:
+  - name: 'elasticsearch-master'
+    dns: [ 'elasticsearch-master.test.com' ]
+  - name: "elasticsearch-data"
+    dns: [ 'elasticsearch-data.test.com' ]
+  - name: 'elasticsearch-client'
+    dns: [ 'elasticsearch-client.test.com' ]
+  - name: 'kibana'
+    dns: [ 'kibana.local' ]

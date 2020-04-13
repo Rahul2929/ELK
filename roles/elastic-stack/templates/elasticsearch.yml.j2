@@ -1,0 +1,19 @@
+cluster.name: elasticStack
+node.name: {{ node_name }}
+node.master: {{ node_master }}
+node.data: {{ node_data }}
+network.host: 0.0.0.0
+http.port: 9200
+path.data: /var/lib/elasticsearch
+path.logs: /var/log/elasticsearch
+cluster.initial_master_nodes: ["elasticsearch-master.test.com"]
+discovery.seed_hosts: ["elasticsearch-master.test.com", "elasticsearch-data.test.com", "elasticsearch-client.test.com"]
+xpack.security.enabled: true
+xpack.security.http.ssl.enabled: true
+xpack.security.transport.ssl.enabled: true
+xpack.security.http.ssl.key: certs/{{ node_name }}/{{ node_name }}.key
+xpack.security.http.ssl.certificate: certs/{{ node_name }}/{{ node_name }}.crt
+xpack.security.http.ssl.certificate_authorities: certs/ca/ca.crt
+xpack.security.transport.ssl.key: certs/{{ node_name }}/{{ node_name }}.key
+xpack.security.transport.ssl.certificate: certs/{{ node_name }}/{{ node_name }}.crt
+xpack.security.transport.ssl.certificate_authorities: certs/ca/ca.crt

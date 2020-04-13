@@ -1,0 +1,19 @@
+- name: create a new ec2 instances
+  ec2:
+    key_name: "{{ ssh_key_name }}"
+    region: "{{ aws_region }}"
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    instance_type: m5.large
+    image: "{{ ami_id }}"
+    exact_count: 1
+    count_tag:
+       Name: "{{ item }}"
+    instance_tags:
+       Name: "{{ item }}"
+    vpc_subnet_id: "{{ subnet_id }}"
+    assign_public_ip: yes
+    user_data: |
+               #!/bin/bash
+               sudo hostnamectl set-hostname "{{ item }}"
+  register: ec2_instances

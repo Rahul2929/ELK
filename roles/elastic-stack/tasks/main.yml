@@ -1,0 +1,199 @@
+- debug:
+    msg : "{{ groups['elasticsearch-master'] }}"
+
+- name: Populate dictonary
+  set_fact:
+    server_details: "{{ server_details|default({}) | combine( {hostvars[item].ansible_nodename: hostvars[item]['ansible_default_ipv4']['address']} ) }}"
+  with_items: "{{ groups.all }}"
+
+- debug:
+    msg: "{{ server_details }}"
+  when: ansible_facts.hostname == "elasticsearch-master"
+
+- name: Add hostnames to hosts file
+  lineinfile:
+    dest: /etc/hosts
+    line: "{{ item.value }} {{ item.key }}.test.com {{ item.key }}"
+    state: present
+  with_dict: "{{ server_details }}"
+
+- name: Add kibana hostname to elasticsearch-client host file
+  lineinfile:
+    dest: /etc/hosts
+    line: "127.0.0.1 kibana.local"
+    state: present
+  when: ansible_facts.hostname == "elasticsearch-client"
+
+- name: Import elasticsearch repo
+  shell: "rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch"
+
+- name: Add elasticsearch repo
+  yum_repository:
+    name: Elasticsearch
+    description: Elasticsearch yum repo
+    file: elastic
+    baseurl: https://artifacts.elastic.co/packages/7.x/yum
+    enabled: yes
+
+- name: upgrade all packages, excluding kernel & foo related packages
+  yum:
+    name: '*'
+    state: latest
+    exclude: kernel*,foo*
+
+- name: Download java & Elasticsearch
+  yum:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - java-1.8.0-openjdk
+    - elasticsearch
+
+- name: Change elasticsearch jvm initial size param
+  replace:
+    dest: /etc/elasticsearch/jvm.options
+    regexp: 'Xms\d+\w'
+    replace: 'Xms6g'
+  
+- name: Change elasticsearch jvm max size param
+  replace:
+    dest: /etc/elasticsearch/jvm.options
+    regexp: 'Xmx\d+\w'
+    replace: 'Xmx6g'
+
+- name: Download Kibana in elasticsearch-client host
+  yum:
+    name: kibana
+    state: present
+  when: ansible_facts.hostname == "elasticsearch-client"
+
+- name: Copy file with owner and permissions
+  copy:
+    src: "{{ role_path }}/files/template.yml"
+    dest: /home/ec2-user
+    mode: '0644'
+  when: ansible_facts.hostname == "elasticsearch-master"
+
+- name: Create cert directory for elasticsearch
+  file:
+    path: /etc/elasticsearch/certs
+    state: directory
+
+- name: Create cert directory for kibana
+  file:
+    path: /etc/kibana/certs
+    state: directory
+  when: ansible_facts.hostname == "elasticsearch-client"
+
+- name: Genereate certs
+  shell: "bin/elasticsearch-certutil cert ca --pem --in /home/ec2-user/template.yml --out /home/ec2-user/certs.zip"
+  args:
+    chdir: /usr/share/elasticsearch
+  when: ansible_facts.hostname == "elasticsearch-master"
+
+- name: Unarchive certs
+  unarchive:
+    src: /home/ec2-user/certs.zip
+    dest: /home/ec2-user/
+    remote_src: yes
+  when: ansible_facts.hostname == "elasticsearch-master"
+
+- name: copy certs to localhost
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: false
+  shell: "scp -i {{ key_location }}/{{ ssh_key_name }}.pem -r ec2-user@{{ groups['elasticsearch-master'] }}:/home/ec2-user/{{ item }} {{ role_path }}/files/"
+  when: ansible_facts.hostname == "elasticsearch-master"
+  with_items:
+    - elasticsearch-client
+    - elasticsearch-data
+    - elasticsearch-master
+    - ca
+    - kibana
+
+- name: copy client certs to elasticsearch-client hosts
+  copy:
+    src: "{{ role_path }}/files/{{ item }}"
+    dest: /etc/elasticsearch/certs
+    mode: '0644'
+  when: ansible_facts.hostname == "elasticsearch-client"
+  with_items:
+    - elasticsearch-client
+    - ca
+
+- name: copy kibana certs to elasticsearch-client hosts
+  copy:
+    src: "{{ role_path }}/files/{{ item }}/"
+    dest: /etc/kibana/certs
+    mode: '0644'
+  when: ansible_facts.hostname == "elasticsearch-client"
+  with_items:
+    - ca
+    - kibana
+
+- name: copy data certs to elasticsearch-data hosts
+  copy:
+    src: "{{ role_path }}/files/{{ item }}"
+    dest: /etc/elasticsearch/certs
+    mode: '0644'
+  when: ansible_facts.hostname == "elasticsearch-data"
+  with_items:
+    - elasticsearch-data
+    - ca
+
+- name: copy master certs to elasticsearch-master hosts
+  copy:
+    src: "{{ role_path }}/files/{{ item }}"
+    dest: /etc/elasticsearch/certs
+    mode: '0644'
+  when: ansible_facts.hostname == "elasticsearch-master"
+  with_items:
+    - elasticsearch-master
+    - ca
+
+- set_fact:
+    node_name: "{{ ansible_facts.hostname }}"
+
+- set_fact:
+    master_node: elasticsearch-master
+    
+- set_fact:
+    node_master: "true"
+    node_data: "false"
+  when: ansible_facts.hostname == "elasticsearch-master"
+
+- set_fact:
+    node_data: "true"
+    node_master: "false"
+  when: ansible_facts.hostname == "elasticsearch-data"
+
+- set_fact:
+    node_data: "false"
+    node_master: "false"
+  when: ansible_facts.hostname == "elasticsearch-client"
+
+- name: Template elasticsearch.yml to hosts
+  template:
+    src: elasticsearch.j2
+    dest: /etc/elasticsearch/elasticsearch.yml
+    mode: '0644'
+
+- name: Template kibana.yml to host
+  template:
+    src: kibana.j2
+    dest: /etc/kibana/kibana.yml
+    mode: '0644'
+  when: ansible_facts.hostname == "elasticsearch-client"
+
+- name: enable elasticsearch service
+  service:
+    name: elasticsearch
+    state: started
+    enabled: yes
+
+- name: enable kibana service
+  service:
+    name: kibana
+    state: started
+    enabled: yes
+  when: ansible_facts.hostname == "elasticsearch-client"

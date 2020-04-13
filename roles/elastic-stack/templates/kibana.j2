@@ -1,0 +1,9 @@
+server.name: "ELK-kibana"
+server.host: 0.0.0.0
+server.ssl.enabled: true
+server.ssl.certificate: /etc/kibana/certs/kibana.crt
+server.ssl.key: /etc/kibana/certs/kibana.key
+elasticsearch.hosts: ["https://elasticsearch-client.test.com:9200"]
+elasticsearch.username: "kibana"
+elasticsearch.password: "kibana"
+elasticsearch.ssl.certificateAuthorities: [ "/etc/kibana/certs/ca.crt" ]
